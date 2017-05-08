@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 
 using Classifier.DataCollecting;
 using Classifier.TextPreprocessing;
 using Classifier.ClassifierModel;
-using System.Collections.Generic;
 
 namespace Classifier
 {
