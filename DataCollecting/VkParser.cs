@@ -12,7 +12,7 @@ using VkNet.Enums.SafetyEnums;
 using VkNet.Model;
 using VkNet.Model.RequestParams;
 
-namespace Classifier
+namespace Classifier.DataCollecting
 {
     class VkParser
     {

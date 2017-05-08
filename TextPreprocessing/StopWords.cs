@@ -1,4 +1,4 @@
-﻿namespace Classifier
+﻿namespace Classifier.TextPreprocessing
 {
     public static class StopWords
     {

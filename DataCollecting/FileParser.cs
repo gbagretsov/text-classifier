@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Classifier
+namespace Classifier.DataCollecting
 {
     class FileParser
     {

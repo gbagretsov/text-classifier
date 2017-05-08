@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.RegularExpressions;
 
-namespace Classifier
+namespace Classifier.TextPreprocessing
 {
     /// <summary>
     /// Copyright (c) 2013 Kory Becker http://www.primaryobjects.com/kory-becker.aspx
