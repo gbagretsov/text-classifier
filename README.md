@@ -19,4 +19,8 @@
 * Средний
 * Высокий
 
-Построен с использованием Accord.NЕT.
+Используемые библиотеки:
+
+* Accord.NЕT &mdash; http://accord-framework.net/
+* VkNet &mdash; https://vknet.github.io/vk/
+* https://github.com/primaryobjects/TFIDF
