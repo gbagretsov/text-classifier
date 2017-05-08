@@ -3,6 +3,7 @@
 using Classifier.DataCollecting;
 using Classifier.TextPreprocessing;
 using Classifier.ClassifierModel;
+using System.Collections.Generic;
 
 namespace Classifier
 {
@@ -16,39 +17,65 @@ namespace Classifier
             
             Console.WriteLine("Calculating TF-IDF...");
 
-            double[][] inputs = TFIDF.Transform(documents, 5);
+            TFIDF.TryLoadVocabulary();
+            double[][] inputs = TFIDF.Transform(documents);
             inputs = TFIDF.Normalize(inputs);
+            TFIDF.SaveVocabulary();
 
-            // TODO: добавить все характеристики
-            int[] outputsВытеснение = FileParser.GetВытеснение();
+            Dictionary<string, int[]> traits = new Dictionary<string, int[]>(9);
 
-            // TODO: собирать статистику: лучший/худший/средний проход
-            for (int iter = 0; iter < 5; iter++)
-            {
-                Console.WriteLine("Training...");
-                DateTime start = DateTime.Now;
+            traits.Add("Denial",             FileParser.GetDenial());
+            traits.Add("Repression",         FileParser.GetRepression());
+            traits.Add("Regression",         FileParser.GetRegression());
+            traits.Add("Compensation",       FileParser.GetCompensation());
+            traits.Add("Projection",         FileParser.GetProjection());
+            traits.Add("Displacement",       FileParser.GetDisplacement());
+            traits.Add("Rationalization",    FileParser.GetRationalization());
+            traits.Add("Reaction Formation", FileParser.GetReactionFormation());
+            traits.Add("Overall Level",      FileParser.GetOverallLevel());
 
-                SVM svmВытеснение = new SVM(inputs, outputsВытеснение);
-                svmВытеснение.Train();
+            Console.WriteLine("Training...");
 
-                DateTime finish = DateTime.Now;
-                double time = (finish - start).TotalSeconds;
-                Console.WriteLine("Elapsed time: " + time + "s, loss: " + svmВытеснение.GetLoss());
-
-                Console.WriteLine("Confusion matrix - Вытеснение:");
-                var confusionMatrixВытеснение = svmВытеснение.GetConfusionMatrix();
-                for (int i = 0; i < 3; i++)
+            foreach (var item in traits)
+            {            
+                // TODO: собирать статистику: лучший/худший/средний проход
+                for (int iter = 0; iter < 1; iter++)
                 {
-                    for (int j = 0; j < 3; j++)
-                    {
-                        Console.Write(string.Format("{0:0.00}\t", confusionMatrixВытеснение[i, j]));
-                    }
-                    Console.WriteLine();
+                    DateTime start = DateTime.Now;
+
+                    SVM svm = new SVM(inputs, item.Value);
+                    svm.Train();
+
+                    DateTime finish = DateTime.Now;
+                    double time = (finish - start).TotalSeconds;
+
+                    OutputLog(item.Key, iter, time, svm.GetLoss(), svm.GetConfusionMatrix());            
                 }
             }
 
             Console.ReadKey();
 
         }
+
+        // TODO: запись в файл
+        private static void OutputLog(string name, int iteration, double time, double loss, double[,] matrix)
+        {
+            Console.WriteLine(string.Format("\n{0}, iteration {1} - elapsed time: {2:0.00}s, loss: {3:0.000}", 
+                name, iteration, time, loss));
+            OutputConfusionMatrix(matrix);
+        }
+
+        private static void OutputConfusionMatrix(double[,] matrix)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    Console.Write(string.Format("{0:0.00}\t", matrix[i, j]));
+                }
+                Console.WriteLine();
+            }
+        }
+
     }
 }

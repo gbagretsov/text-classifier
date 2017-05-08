@@ -154,7 +154,7 @@ namespace Classifier.TextPreprocessing
         /// Saves the TFIDF vocabulary to disk.
         /// </summary>
         /// <param name="filePath">File path</param>
-        public static void Save(string filePath = "vocabulary.dat")
+        public static void SaveVocabulary(string filePath = "vocabulary.dat")
         {
             // Save result to disk.
             using (FileStream fs = new FileStream(filePath, FileMode.Create))
@@ -163,19 +163,23 @@ namespace Classifier.TextPreprocessing
                 formatter.Serialize(fs, _vocabularyIDF);
             }
         }
-
+        
         /// <summary>
         /// Loads the TFIDF vocabulary from disk.
         /// </summary>
         /// <param name="filePath">File path</param>
-        public static void Load(string filePath = "vocabulary.dat")
+        public static void TryLoadVocabulary(string filePath = "vocabulary.dat")
         {
             // Load from disk.
-            using (FileStream fs = new FileStream(filePath, FileMode.Open))
+            try
             {
-                BinaryFormatter formatter = new BinaryFormatter();
-                _vocabularyIDF = (Dictionary<string, double>)formatter.Deserialize(fs);
+                using (FileStream fs = new FileStream(filePath, FileMode.Open))
+                {
+                    BinaryFormatter formatter = new BinaryFormatter();
+                    _vocabularyIDF = (Dictionary<string, double>)formatter.Deserialize(fs);
+                }
             }
+            catch (FileNotFoundException) { }
         }
 
         #region Private Helpers
