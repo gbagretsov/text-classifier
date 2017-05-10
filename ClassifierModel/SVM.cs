@@ -6,6 +6,8 @@ using Accord.Math.Optimization.Losses;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Classifier.ClassifierModel
 {
@@ -109,6 +111,14 @@ namespace Classifier.ClassifierModel
                         (confusionMatrix[i, 0] + confusionMatrix[i, 1] + confusionMatrix[i, 2]);
 
             return confusionPercentageMatrix;       
+        }
+
+        public void SaveToFile(string path)
+        {
+            using (FileStream fs = new FileStream(path, FileMode.Create))
+            {
+                new BinaryFormatter().Serialize(fs, model);
+            }
         }
 
         private void ShuffleData(int? randomSeed)

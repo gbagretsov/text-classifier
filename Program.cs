@@ -51,7 +51,9 @@ namespace Classifier
 
                     double crossEntropyLoss, zeroOneLoss;
                     svm.GetLoss(out crossEntropyLoss, out zeroOneLoss);
-                    OutputLog(item.Key, iter, time, crossEntropyLoss, zeroOneLoss, svm.GetConfusionMatrix());            
+                    OutputLog(item.Key, iter, time, crossEntropyLoss, zeroOneLoss, svm.GetConfusionMatrix());
+
+                    svm.SaveToFile(@"Models\" + item.Key + ".dat");
                 }
             }
 
