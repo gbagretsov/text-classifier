@@ -1,11 +1,11 @@
 ﻿using Accord.MachineLearning.VectorMachines.Learning;
 using Accord.Statistics.Kernels;
+using Accord.MachineLearning.VectorMachines;
+using Accord.Math.Optimization.Losses;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Accord.MachineLearning.VectorMachines;
-using Accord.Math.Optimization.Losses;
 
 namespace Classifier.ClassifierModel
 {
@@ -48,16 +48,34 @@ namespace Classifier.ClassifierModel
         public void Train()
         {
             model = teacher.Learn(trainSet, trainAnswers);
+
+            // Create the multi-class learning algorithm for the machine
+            var calibration = new MulticlassSupportVectorLearning<Linear>()
+            {
+                Model = model, // We will start with an existing machine
+
+                // Configure the learning algorithm to use SMO to train the
+                //  underlying SVMs in each of the binary class subproblems.
+                Learner = (param) => new ProbabilisticOutputCalibration<Linear>()
+                {
+                    Model = param.Model // Start with an existing machine
+                }
+            };
+            
+            calibration.ParallelOptions.MaxDegreeOfParallelism = 4;
+            calibration.Learn(inputs, outputs);
+
         }
 
-        public double GetLoss()
+        public void GetLoss(out double crossEntropyLoss, out double zeroOneLoss)
         {
-            // Obtain class predictions for each sample
             int[] predicted = model.Decide(testSet);
+            // double[] scores = model.Score(testSet);
+            // double[][] logl = model.LogLikelihoods(testSet);
+            double[][] prob = model.Probabilities(testSet);
 
-            // Compute classification error
-            // TODO: изучить другие ошибки
-            return new ZeroOneLoss(testAnswers).Loss(predicted);
+            crossEntropyLoss = new CategoryCrossEntropyLoss(testAnswers).Loss(prob);
+            zeroOneLoss = new ZeroOneLoss(testAnswers).Loss(predicted);
         }
 
         // TODO: считать accuracy, precision, recall

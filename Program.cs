@@ -49,7 +49,9 @@ namespace Classifier
                     DateTime finish = DateTime.Now;
                     double time = (finish - start).TotalSeconds;
 
-                    OutputLog(item.Key, iter, time, svm.GetLoss(), svm.GetConfusionMatrix());            
+                    double crossEntropyLoss, zeroOneLoss;
+                    svm.GetLoss(out crossEntropyLoss, out zeroOneLoss);
+                    OutputLog(item.Key, iter, time, crossEntropyLoss, zeroOneLoss, svm.GetConfusionMatrix());            
                 }
             }
 
@@ -58,10 +60,12 @@ namespace Classifier
         }
 
         // TODO: запись в файл
-        private static void OutputLog(string name, int iteration, double time, double loss, double[,] matrix)
+        private static void OutputLog
+            (string name, int iteration, double time, double crossEntropyLoss, double zeroOneLoss, double[,] matrix)
         {
-            Console.WriteLine(string.Format("\n{0}, iteration {1} - elapsed time: {2:0.00}s, loss: {3:0.000}", 
-                name, iteration, time, loss));
+            Console.WriteLine(string.Format
+                ("\n{0}, iteration {1} - elapsed time: {2:0.00}s, cross entropy loss: {3:0.000}, zero-one loss: {4:0.000}", 
+                name, iteration, time, crossEntropyLoss, zeroOneLoss));
             OutputConfusionMatrix(matrix);
         }
 
