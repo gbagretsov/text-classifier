@@ -2,12 +2,11 @@
 using Accord.Statistics.Kernels;
 using Accord.MachineLearning.VectorMachines;
 using Accord.Math.Optimization.Losses;
+using Accord.IO;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace Classifier.ClassifierModel
 {
@@ -115,10 +114,7 @@ namespace Classifier.ClassifierModel
 
         public void SaveToFile(string path)
         {
-            using (FileStream fs = new FileStream(path, FileMode.Create))
-            {
-                new BinaryFormatter().Serialize(fs, model);
-            }
+            Serializer.Save(model, path);
         }
 
         private void ShuffleData(int? randomSeed)
