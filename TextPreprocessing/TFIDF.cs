@@ -45,23 +45,41 @@ namespace Classifier.TextPreprocessing
         /// </summary>
         /// <param name="documents">string[]</param>
         /// <param name="vocabularyThreshold">Minimum number of occurences of the term within all documents</param>
+        /// <param name="extractUnigrams">Whether unigrams should be extracted</param>
+        /// <param name="extractBigrams">Whether bigrams should be extracted</param>
+        /// <param name="featuresAmount">Maximum amount of features included to the vocabulary (top N features with highest IDF value are selected)</param>
         /// <returns>double[][]</returns>
-        public static double[][] Transform(string[] documents, int vocabularyThreshold = 3)
+        public static double[][] Transform(string[] documents, 
+                                           int vocabularyThreshold = 3, 
+                                           bool extractUnigrams = true, 
+                                           bool extractBigrams = true, 
+                                           int featuresAmount = 1500)
         {
             List<List<string>> stemmedDocs;
             List<string> vocabulary;
 
             // Get the vocabulary and stem the documents at the same time.
-            vocabulary = GetVocabulary(documents, out stemmedDocs, vocabularyThreshold);
+            vocabulary = GetVocabulary(documents, out stemmedDocs, vocabularyThreshold, extractUnigrams, extractBigrams);
 
             if (_vocabularyIDF.Count == 0)
             {
                 // Calculate the IDF for each vocabulary term.
                 foreach (var term in vocabulary)
                 {
-                    double numberOfDocsContainingTerm = stemmedDocs.Where(d => d.Contains(term)).Count();
+                    double numberOfDocsContainingTerm = term.Contains(" ") ? // биграмма?
+                        // да, биграмма
+                        stemmedDocs
+                            .Select(doc => doc.Aggregate((prev, cur) => prev + " " + cur)) // преобразуем документы в строки
+                            .Where(d => d.Contains(term))
+                            .Count() :
+                        // нет, униграмма
+                        stemmedDocs
+                            .Where(d => d.Contains(term))
+                            .Count(); 
                     _vocabularyIDF[term] = Math.Log((double)stemmedDocs.Count / ((double)1 + numberOfDocsContainingTerm));
                 }
+
+                _vocabularyIDF = _vocabularyIDF.OrderByDescending(t => t.Value).Take(featuresAmount).ToDictionary(x => x.Key, x => x.Value);
             }
 
             // Transform each document into a vector of tfidf values.
@@ -190,9 +208,8 @@ namespace Classifier.TextPreprocessing
         /// <param name="docs">string[]</param>
         /// <param name="stemmedDocs">List of List of string</param>
         /// <returns>Vocabulary (list of strings)</returns>
-        private static List<string> GetVocabulary(string[] docs, out List<List<string>> stemmedDocs, int vocabularyThreshold)
+        private static List<string> GetVocabulary(string[] docs, out List<List<string>> stemmedDocs, int vocabularyThreshold, bool extractUnigrams, bool extractBigrams)
         {
-            // TODO: N-grams
             List<string> vocabulary = new List<string>();
             Dictionary<string, int> wordCountList = new Dictionary<string, int>();
             stemmedDocs = new List<List<string>>();
@@ -201,43 +218,58 @@ namespace Classifier.TextPreprocessing
             {
                 List<string> stemmedDoc = new List<string>();
                 
-                string[] parts2 = Tokenize(doc);
+                string[] parts2 = Tokenize(doc)
+                    .Select(s => s.ToLower()) // Приводим слова в нижний регистр
+                    .Select(s => Regex.Replace(s, "[^a-zA-Zа-яА-Я0-9]", "")) // Удаляем небуквенные символы
+                    .Where(s => !StopWords.stopWordsList.Contains(s)) // Исключаем стоп-слова
+                    .Where(s => s.Length > 0) // Исключаем пустые слова
+                    .ToArray();
 
                 List<string> words = new List<string>();
+                
                 foreach (string part in parts2)
                 {
-                    // Strip non-alphanumeric characters.
-                    string stripped = Regex.Replace(part, "[^a-zA-Zа-яА-Я0-9]", "");
-
-                    if (!StopWords.stopWordsList.Contains(stripped.ToLower()))
+                    // unigrams
+                    if (extractUnigrams)
                     {
-                        try
+                        words.Add(part);
+                        // Build the word count list.
+                        if (wordCountList.ContainsKey(part))
                         {
-                            string stem = stripped.ToLower();
-                            words.Add(stem);
-
-                            if (stem.Length > 0)
-                            {
-                                // Build the word count list.
-                                if (wordCountList.ContainsKey(stem))
-                                {
-                                    wordCountList[stem]++;
-                                }
-                                else
-                                {
-                                    wordCountList.Add(stem, 0);
-                                }
-
-                                stemmedDoc.Add(stem);
-                            }
+                            wordCountList[part]++;
                         }
-                        catch
+                        else
                         {
+                            wordCountList.Add(part, 1);
+                        }
+                    }
+                    
+                    stemmedDoc.Add(part);
+                }
+
+                // bigrams
+                if (extractBigrams)
+                {
+                    for (int i = 1; i < parts2.Length; i++)
+                    {
+                        string bigram = parts2[i - 1] + " " + parts2[i];
+                        words.Add(bigram);
+                        // Build the word count list.
+                        if (wordCountList.ContainsKey(bigram))
+                        {
+                            wordCountList[bigram]++;
+                        }
+                        else
+                        {
+                            wordCountList.Add(bigram, 1);
                         }
                     }
                 }
 
-                stemmedDocs.Add(stemmedDoc);
+                if (stemmedDoc.Count > 0)
+                {
+                    stemmedDocs.Add(stemmedDoc);
+                }
             }
 
             // Get the top words.
