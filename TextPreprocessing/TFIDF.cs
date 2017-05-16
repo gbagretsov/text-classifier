@@ -39,6 +39,8 @@ namespace Classifier.TextPreprocessing
         /// </summary>
         private static Dictionary<string, double> _vocabularyIDF = new Dictionary<string, double>();
 
+        private static Dictionary<string, double> _filteredVocabularyIDF = new Dictionary<string, double>();
+
         /// <summary>
         /// Transforms a list of documents into their associated TF*IDF values.
         /// If a vocabulary does not yet exist, one will be created, based upon the documents' words.
@@ -51,39 +53,55 @@ namespace Classifier.TextPreprocessing
         /// <returns>double[][]</returns>
         public static double[][] Transform(string[] documents, 
                                            int vocabularyThreshold = 3, 
-                                           bool extractUnigrams = true, 
-                                           bool extractBigrams = true, 
-                                           int featuresAmount = 1500)
+                                           bool extractUnigrams = true,
+                                           int featuresAmount = int.MaxValue)
         {
             List<List<string>> stemmedDocs;
             List<string> vocabulary;
 
             // Get the vocabulary and stem the documents at the same time.
-            vocabulary = GetVocabulary(documents, out stemmedDocs, vocabularyThreshold, extractUnigrams, extractBigrams);
+            vocabulary = GetVocabulary(documents, out stemmedDocs, vocabularyThreshold, extractUnigrams);
+
+            Console.WriteLine();
 
             if (_vocabularyIDF.Count == 0)
             {
+
+                int i = 0;
+
                 // Calculate the IDF for each vocabulary term.
                 foreach (var term in vocabulary)
-                {
-                    double numberOfDocsContainingTerm = term.Contains(" ") ? // биграмма?
+                { 
+
+                    i++;
+                    ClearCurrentConsoleLine();
+                    Console.Write("Creating IDF dictionary: term " + i + " of " + vocabulary.Count);
+
+                    double numberOfDocsContainingTerm;
+                    if (term.Contains(" "))
+                    { // биграмма?
                         // да, биграмма
-                        stemmedDocs
+                        numberOfDocsContainingTerm = stemmedDocs
                             .Select(doc => doc.Aggregate((prev, cur) => prev + " " + cur)) // преобразуем документы в строки
                             .Where(d => d.Contains(term))
-                            .Count() :
+                            .Count();
+                    }
+                    else
+                    {
                         // нет, униграмма
-                        stemmedDocs
+                        numberOfDocsContainingTerm = stemmedDocs
                             .Where(d => d.Contains(term))
-                            .Count(); 
+                            .Count();
+                    }
                     _vocabularyIDF[term] = Math.Log((double)stemmedDocs.Count / ((double)1 + numberOfDocsContainingTerm));
                 }
 
-                _vocabularyIDF = _vocabularyIDF.OrderByDescending(t => t.Value).Take(featuresAmount).ToDictionary(x => x.Key, x => x.Value);
             }
 
+            _filteredVocabularyIDF = _vocabularyIDF.OrderByDescending(t => t.Value).Take(featuresAmount).ToDictionary(x => x.Key, x => x.Value);
+
             // Transform each document into a vector of tfidf values.
-            return TransformToTFIDFVectors(stemmedDocs, _vocabularyIDF);
+            return TransformToTFIDFVectors(stemmedDocs, _filteredVocabularyIDF);
         }
 
         /// <summary>
@@ -94,16 +112,43 @@ namespace Classifier.TextPreprocessing
         /// <returns>double[][]</returns>
         private static double[][] TransformToTFIDFVectors(List<List<string>> stemmedDocs, Dictionary<string, double> vocabularyIDF)
         {
+            Console.WriteLine();
+            int i = 0;
+
             // Transform each document into a vector of tfidf values.
             List<List<double>> vectors = new List<List<double>>();
             foreach (var doc in stemmedDocs)
             {
+
+                i++;
+                ClearCurrentConsoleLine();
+                Console.Write("Counting TF-IDF: document " + i + " of " + stemmedDocs.Count);
+
                 List<double> vector = new List<double>();
 
                 foreach (var vocab in vocabularyIDF)
                 {
                     // Term frequency = count how many times the term appears in this document.
-                    double tf = doc.Where(d => d == vocab.Key).Count();
+                    double tf = 0;
+
+                    if (vocab.Key.Contains(" "))
+                    {
+                        // биграмма
+                        string s = doc.Aggregate((prev, cur) => prev + " " + cur);
+                        tf = 
+                            s.Split(' ').Length - 1 - // Длина документа, выраженная в биграммах
+                            s.Replace(vocab.Key, "").Replace("  ", " ").Split(' ').Length + 1;
+                        if (tf < 0)
+                        {
+                            throw new ArgumentException("tf < 0", "tf");
+                        }
+                    }
+                    else
+                    {
+                        // униграмма
+                        tf = doc.Where(d => d == vocab.Key).Count();
+                    }   
+
                     double tfidf = tf * vocab.Value;
 
                     vector.Add(tfidf);
@@ -112,6 +157,7 @@ namespace Classifier.TextPreprocessing
                 vectors.Add(vector);
             }
 
+            Console.WriteLine();
             return vectors.Select(v => v.ToArray()).ToArray();
         }
 
@@ -208,14 +254,21 @@ namespace Classifier.TextPreprocessing
         /// <param name="docs">string[]</param>
         /// <param name="stemmedDocs">List of List of string</param>
         /// <returns>Vocabulary (list of strings)</returns>
-        private static List<string> GetVocabulary(string[] docs, out List<List<string>> stemmedDocs, int vocabularyThreshold, bool extractUnigrams, bool extractBigrams)
+        private static List<string> GetVocabulary(string[] docs, out List<List<string>> stemmedDocs, int vocabularyThreshold, bool extractUnigrams)
         {
             List<string> vocabulary = new List<string>();
             Dictionary<string, int> wordCountList = new Dictionary<string, int>();
             stemmedDocs = new List<List<string>>();
 
+            int count = 0;
+
             foreach (var doc in docs)
             {
+
+                count++;
+                ClearCurrentConsoleLine();
+                Console.Write("Extracting terms: document " + count + " of " + docs.Length);
+
                 List<string> stemmedDoc = new List<string>();
                 
                 string[] parts2 = Tokenize(doc)
@@ -226,7 +279,6 @@ namespace Classifier.TextPreprocessing
                     .ToArray();
 
                 List<string> words = new List<string>();
-                
                 foreach (string part in parts2)
                 {
                     // unigrams
@@ -248,7 +300,7 @@ namespace Classifier.TextPreprocessing
                 }
 
                 // bigrams
-                if (extractBigrams)
+                if (!extractUnigrams)
                 {
                     for (int i = 1; i < parts2.Length; i++)
                     {
@@ -309,6 +361,14 @@ namespace Classifier.TextPreprocessing
 
             // Tokenize and also get rid of any punctuation
             return text.Split(" @$/#.-:&*+=[]?!(){},''\">_<;%\\".ToCharArray());
+        }
+
+        private static void ClearCurrentConsoleLine()
+        {
+            int currentLineCursor = Console.CursorTop;
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write(new string(' ', Console.WindowWidth));
+            Console.SetCursorPosition(0, currentLineCursor);
         }
 
         #endregion
