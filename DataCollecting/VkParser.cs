@@ -5,11 +5,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 using VkNet;
-using VkNet.Enums;
 using VkNet.Enums.Filters;
 using VkNet.Enums.SafetyEnums;
+using VkNet.Exception;
 using VkNet.Model;
 using VkNet.Model.RequestParams;
 
@@ -47,17 +48,54 @@ namespace Classifier.DataCollecting
                 while (reader.HasMoreRecords)
                 {
                     var dataRecord = reader.ReadDataRecord();
-                    
+
+                    long id;
+                    string domain = long.TryParse(dataRecord["id"], out id) ? "id" + id.ToString() : dataRecord["id"];
+                    List<Post> posts = new List<Post>();
+
                     try
                     {
-                        Sex userSex = api.Users.Get(long.Parse(dataRecord["id"]), ProfileFields.Sex).Sex;
+                        uint count = 0;
 
-                        List<Post> posts = api.Wall.Get(new WallGetParams()
+                        try
                         {
-                            OwnerId = long.Parse(dataRecord["id"]),
-                            Filter = WallFilter.Owner,
-                            Count = 100
-                        }).WallPosts.ToList();
+                            posts = api.Wall.Get(new WallGetParams()
+                            {
+                                Domain = domain,
+                                Filter = WallFilter.Owner,
+                                Count = 100
+                            }).WallPosts.ToList();
+                            count = (uint)posts.Count;
+                        }
+                        catch (InvalidParameterException)
+                        {
+                            // Пытаемся пропустить неопознаваемые записи                        
+                            for (uint i = 0; i < 100; i++)
+                            {
+                                Thread.Sleep(500);
+                                try
+                                {
+                                    var curPost = api.Wall.Get(new WallGetParams()
+                                    {
+                                        Domain = domain,
+                                        Filter = WallFilter.Owner,
+                                        Count = 1,
+                                        Offset = i
+                                    }).WallPosts.ToList();
+                                    if (curPost.Count == 1)
+                                    {
+                                        posts.Add(curPost[0]);
+                                        count++;
+                                    }
+                                }
+                                catch (InvalidParameterException)
+                                {
+                                    Console.WriteLine(string.Format("Skipped {0} post from {1}", i, domain));
+                                }
+                            }
+                        }                            
+
+                        Console.WriteLine(string.Format("Got {0} posts from {1}", count, domain));
 
                         foreach (Post post in posts)
                         {
@@ -78,8 +116,7 @@ namespace Classifier.DataCollecting
                             
                             var outputRecord = new string[columns.Length];
                             outputRecord[0] = s;
-                            outputRecord[1] = ((int)userSex - 1).ToString();
-                            for (int i = 2; i < columns.Length; i++)
+                            for (int i = 1; i < columns.Length; i++)
                             {
                                 outputRecord[i] = dataRecord[columns[i]];
                             }
@@ -87,11 +124,11 @@ namespace Classifier.DataCollecting
                             writer.WriteRecord(outputRecord);
                         }
 
-                        System.Threading.Thread.Sleep(50);
+                        Thread.Sleep(500);
                     }
-                    catch (VkNet.Exception.InvalidParameterException e)
+                    catch (Exception e)
                     {
-                        Console.WriteLine(e.Message);
+                        Console.WriteLine(domain + ": " + e.Message);
                     }
                 }
             }

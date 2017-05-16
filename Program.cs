@@ -11,7 +11,11 @@ namespace Classifier
     {
         static void Main(string[] args)
         {
-            // VkParser.ParseInformation(args[0], args[1]);
+            if (args != null && args.Length > 0)
+            {
+                VkParser.ParseInformation(args[0], args[1]);
+                Console.ReadKey();
+            }
 
             string[] documents = FileParser.GetDocuments();
             
