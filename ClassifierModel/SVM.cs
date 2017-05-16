@@ -38,7 +38,8 @@ namespace Classifier.ClassifierModel
                 // using LIBLINEAR's L2-loss SVC dual for each SVM
                 Learner = (p) => new LinearDualCoordinateDescent()
                 {
-                    Loss = Loss.L2,
+                    // TODO: изменяемый гиперпараметр
+                    Loss = Loss.L1,
                     Tolerance = 1e-6
                 }
             };
