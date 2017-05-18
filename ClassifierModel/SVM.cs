@@ -65,7 +65,7 @@ namespace Classifier.ClassifierModel
             };
             
             calibration.ParallelOptions.MaxDegreeOfParallelism = 4;
-            calibration.Learn(inputs, outputs);
+            calibration.Learn(trainSet, trainAnswers);
 
         }
 
