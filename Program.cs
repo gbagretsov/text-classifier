@@ -57,9 +57,28 @@ namespace Classifier
                     DateTime finish = DateTime.Now;
                     double time = (finish - start).TotalSeconds;
 
-                    double crossEntropyLoss, zeroOneLoss;
-                    svm.GetLoss(out crossEntropyLoss, out zeroOneLoss);
-                    OutputLog(item.Key, iter, time, crossEntropyLoss, zeroOneLoss, svm.GetConfusionMatrix());
+                    double overallAccuracy, averageAccuracy;
+                    double microAveragedPrecision, macroAveragedPrecision;
+                    double microAveragedRecall, macroAveragedRecall;
+                    double microAveragedF1Score, macroAveragedF1Score;
+
+                    svm.GetPerformance(out overallAccuracy,
+                                       out averageAccuracy,
+                                       out microAveragedPrecision,
+                                       out macroAveragedPrecision,
+                                       out microAveragedRecall,
+                                       out macroAveragedRecall,
+                                       out microAveragedF1Score,
+                                       out macroAveragedF1Score);
+                    Console.WriteLine(string.Format("{0:0.000000} {1:0.000000} {2:0.000000} {3:0.000000} {4:0.000000} {5:0.000000} {6:0.000000} {7:0.000000}",
+                        overallAccuracy, 
+                        averageAccuracy, 
+                        microAveragedPrecision, 
+                        macroAveragedPrecision,
+                        microAveragedRecall,
+                        macroAveragedRecall,
+                        microAveragedF1Score,
+                        macroAveragedF1Score));
 
                     svm.SaveToFile(@"Models\" + item.Key + ".dat");
                 }
