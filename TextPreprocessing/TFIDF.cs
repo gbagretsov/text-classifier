@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Classifier.TextPreprocessing
 {
@@ -52,13 +53,14 @@ namespace Classifier.TextPreprocessing
         /// <param name="extractBigrams">Whether bigrams should be extracted</param>
         /// <param name="featuresAmount">Maximum amount of features included to the vocabulary (top N features with highest IDF value are selected)</param>
         /// <returns>double[][]</returns>
-        public static double[][] Transform(string[] documents, 
-                                           int vocabularyThreshold = 0, 
+        public static double[][] Transform(string[] documents,
                                            bool extractUnigrams = true,
                                            int featuresAmount = int.MaxValue)
         {
             List<List<string>> stemmedDocs;
             List<string> vocabulary;
+
+            int vocabularyThreshold = 2;
 
             // Get the vocabulary and stem the documents at the same time.
             vocabulary = GetVocabulary(documents, out stemmedDocs, vocabularyThreshold, extractUnigrams);
@@ -117,17 +119,19 @@ namespace Classifier.TextPreprocessing
         /// <returns>double[][]</returns>
         private static double[][] TransformToTFIDFVectors(List<List<string>> stemmedDocs, Dictionary<string, double> vocabularyIDF)
         {
-            Console.WriteLine();
+            Console.WriteLine("Counting TF-IDF...");
             int i = 0;
 
             // Transform each document into a vector of tfidf values.
-            List<List<double>> vectors = new List<List<double>>();
-            foreach (var doc in stemmedDocs)
+            Dictionary<int, List<double>> vectors = new Dictionary<int, List<double>>(stemmedDocs.Count);
+
+            //foreach (var doc in stemmedDocs)
+            Parallel.For(0, stemmedDocs.Count, (index) =>
             {
 
-                i++;
-                ClearCurrentConsoleLine();
-                Console.Write("Counting TF-IDF: document " + i + " of " + stemmedDocs.Count);
+                //i++;
+                //ClearCurrentConsoleLine();
+                //Console.Write("Counting TF-IDF: document " + i + " of " + stemmedDocs.Count);
 
                 List<double> vector = new List<double>();
 
@@ -139,8 +143,8 @@ namespace Classifier.TextPreprocessing
                     if (vocab.Key.Contains(" "))
                     {
                         // биграмма
-                        string s = doc.Aggregate((prev, cur) => prev + " " + cur);
-                        tf = 
+                        string s = stemmedDocs[index].Aggregate((prev, cur) => prev + " " + cur);
+                        tf =
                             s.Split(' ').Length - 1 - // Длина документа, выраженная в биграммах
                             s.Replace(vocab.Key, "").Replace("  ", " ").Split(' ').Length + 1;
                         if (tf < 0)
@@ -151,19 +155,20 @@ namespace Classifier.TextPreprocessing
                     else
                     {
                         // униграмма
-                        tf = doc.Where(d => d == vocab.Key).Count();
-                    }   
+                        tf = stemmedDocs[index].Where(d => d == vocab.Key).Count();
+                    }
 
                     double tfidf = tf * vocab.Value;
 
                     vector.Add(tfidf);
                 }
 
-                vectors.Add(vector);
-            }
+                vectors.Add(index, vector);
+            });
 
             Console.WriteLine();
-            return vectors.Select(v => v.ToArray()).ToArray();
+            var result = vectors.OrderBy(v => v.Key).Select(v => v.Value.ToArray()).ToArray();
+            return result;
         }
 
         /// <summary>

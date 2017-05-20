@@ -26,8 +26,7 @@ namespace Classifier
             inputs = TFIDF.Normalize(inputs);
 
             // Параметры экспериментов
-            int[] featuresUni = new int[] { 7500, 10000, 12500, 15000, 17500, 20000 };
-            int[] featuresBi  = new int[] { 1000, 2000, 3500, 5000, 6500, 8000 };
+            int[] featuresCount = new int[] { 1500, 3000, 4500, 6000, 7500, 9000 };
             double[] complexity = new double[] { 0.1, 0.5, 1, 2, 5 };
             Loss[] loss = new Loss[] { Loss.L1, Loss.L2 };
 
