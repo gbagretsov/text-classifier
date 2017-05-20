@@ -24,7 +24,9 @@ namespace Classifier.ClassifierModel
         private MulticlassSupportVectorLearning<Linear> teacher;
         private MulticlassSupportVectorMachine<Linear> model;
 
-        public SVM(double[][] inputs, int[] outputs, double ratio = 0.8, int? randomSeed = null)
+        public SVM(double[][] inputs, int[] outputs, 
+                   double complexity, Loss loss, 
+                   double ratio = 0.8, int? randomSeed = null)
         {
             this.inputs = inputs;
             this.outputs = outputs;
@@ -38,8 +40,8 @@ namespace Classifier.ClassifierModel
                 // using LIBLINEAR's L2-loss SVC dual for each SVM
                 Learner = (p) => new LinearDualCoordinateDescent()
                 {
-                    // TODO: изменяемый гиперпараметр
-                    Loss = Loss.L1,
+                    Loss = loss,
+                    Complexity = complexity,
                     Tolerance = 1e-6
                 }
             };

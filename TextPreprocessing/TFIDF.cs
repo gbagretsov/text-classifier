@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Iveonik.Stemmers;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -52,7 +53,7 @@ namespace Classifier.TextPreprocessing
         /// <param name="featuresAmount">Maximum amount of features included to the vocabulary (top N features with highest IDF value are selected)</param>
         /// <returns>double[][]</returns>
         public static double[][] Transform(string[] documents, 
-                                           int vocabularyThreshold = 3, 
+                                           int vocabularyThreshold = 0, 
                                            bool extractUnigrams = true,
                                            int featuresAmount = int.MaxValue)
         {
@@ -63,6 +64,8 @@ namespace Classifier.TextPreprocessing
             vocabulary = GetVocabulary(documents, out stemmedDocs, vocabularyThreshold, extractUnigrams);
 
             Console.WriteLine();
+
+            TryLoadVocabulary(extractUnigrams);
 
             if (_vocabularyIDF.Count == 0)
             {
@@ -95,6 +98,8 @@ namespace Classifier.TextPreprocessing
                     }
                     _vocabularyIDF[term] = Math.Log((double)stemmedDocs.Count / ((double)1 + numberOfDocsContainingTerm));
                 }
+
+                SaveVocabulary(extractUnigrams);
 
             }
 
@@ -218,8 +223,9 @@ namespace Classifier.TextPreprocessing
         /// Saves the TFIDF vocabulary to disk.
         /// </summary>
         /// <param name="filePath">File path</param>
-        public static void SaveVocabulary(string filePath = "vocabulary.dat")
+        public static void SaveVocabulary(bool uni)
         {
+            var filePath = uni ? "voc1.dat" : "voc2.dat";
             // Save result to disk.
             using (FileStream fs = new FileStream(filePath, FileMode.Create))
             {
@@ -232,8 +238,9 @@ namespace Classifier.TextPreprocessing
         /// Loads the TFIDF vocabulary from disk.
         /// </summary>
         /// <param name="filePath">File path</param>
-        public static void TryLoadVocabulary(string filePath = "vocabulary.dat")
+        public static void TryLoadVocabulary(bool uni)
         {
+            var filePath = uni ? "voc1.dat" : "voc2.dat";
             // Load from disk.
             try
             {
@@ -259,6 +266,7 @@ namespace Classifier.TextPreprocessing
             List<string> vocabulary = new List<string>();
             Dictionary<string, int> wordCountList = new Dictionary<string, int>();
             stemmedDocs = new List<List<string>>();
+            var stemmer = new RussianStemmer();
 
             int count = 0;
 
@@ -276,6 +284,8 @@ namespace Classifier.TextPreprocessing
                     .Select(s => Regex.Replace(s, "[^a-zA-Zа-яА-Я0-9]", "")) // Удаляем небуквенные символы
                     .Where(s => !StopWords.stopWordsList.Contains(s)) // Исключаем стоп-слова
                     .Where(s => s.Length > 0) // Исключаем пустые слова
+                    .Select(s => stemmer.Stem(s))
+                    .Distinct()
                     .ToArray();
 
                 List<string> words = new List<string>();
