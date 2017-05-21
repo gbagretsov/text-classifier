@@ -57,7 +57,8 @@ namespace Classifier
                         "ovrAcc",      "avgAcc",
                         "microAvgPre", "macroAvgPre",
                         "microAvgRec", "macroAvgRec",
-                        "microAvgF1",  "macroAvgF1"
+                        "microAvgF1",  "macroAvgF1",
+                        "time"
                     };
                     writer.WriteRecord(columns);
 
@@ -149,11 +150,11 @@ namespace Classifier
                                     outputRecord[11] = Convert.ToString(microAveragedF1Score);
                                     outputRecord[12] = Convert.ToString(macroAveragedF1Score);
 
+                                    outputRecord[13] = Convert.ToString(time);
+
                                     writer.WriteRecord(outputRecord);
                                 }
                         }
-
-                        if (unigrams == true) break;
                     }
 
                 }
